@@ -1,3 +1,8 @@
+secrets.sh
+epos.xlsx
+
+# Default gitignore for Python projects:
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
