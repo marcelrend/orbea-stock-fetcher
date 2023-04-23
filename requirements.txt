@@ -2,3 +2,4 @@ ShopifyAPI
 pandas
 openpyxl
 requests
+functions-framework==3.*
