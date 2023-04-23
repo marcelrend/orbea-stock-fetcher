@@ -1,3 +1,4 @@
+import logging
 import os
 import numpy as np
 import io
@@ -8,6 +9,12 @@ from orbea_stock import OrbeaStock
 
 
 def main():
+    logging.basicConfig(
+        level=logging.WARN,
+        format="%(asctime)s:%(levelname)s:%(message)s",
+        datefmt="%Y-%m-%d %I:%M:%S%p",
+    )
+
     script_dir = os.path.dirname(os.path.realpath(__file__))
     shopify_api_version = "2022-10"
 
@@ -50,10 +57,8 @@ def main():
         if required_env not in os.environ:
             raise Exception(f"Environment variable {required_env} is not set")
 
-    # Load Epos file from local file system
-    epos_file = f"{script_dir}/epos.xlsx"
-
     # Load Epos
+    epos_file = f"{script_dir}/epos.xlsx"
     df = pd.read_excel(io=epos_file, index_col=0, dtype=str)
     df = df[df["Family"].isin(families)]
 
@@ -92,6 +97,8 @@ def main():
 
     unique_model_ids = df["Model ID"].unique()
 
+    logging.info(f"Running app, processing {len(unique_model_ids)} products")
+
     with shopify.Session.temp(
         os.getenv("SHOPIFY_SHOP_URL"),
         shopify_api_version,
@@ -107,11 +114,11 @@ def main():
 
             title = f"Orbea {first_record['Model']} {first_record['M']}"
 
-            print(f"Product {i+1} of {len(unique_model_ids)} - {title}")
+            logging.info(f"Product {i+1} of {len(unique_model_ids)} - {title}")
 
             # Skip products without image - they are not for sale yet
             if not first_record["Image_Url"]:
-                print(f"Skipping {title}. No image")
+                logging.info(f"Skipping {title}. No image")
                 continue
 
             find_product = shopify.Product.find(title=title)
@@ -123,7 +130,7 @@ def main():
                 else:
                     raise Exception(f"Multiple products found for {title}")
             else:
-                print(f"Skipping {title}. Doesn't exist in Shopify")
+                logging.info(f"Skipping {title}. Doesn't exist in Shopify")
                 continue
 
             for variant in product.variants:
@@ -135,10 +142,7 @@ def main():
                     )
                 ].iloc[0]
 
-                if (
-                    df_variant["Units available"] > 0
-                    or df_variant["Orbea Colour (EN)"] == "Myo"
-                ):
+                if df_variant["Units available"] > 0:
                     inventory_policy = "continue"
                 else:
                     inventory_policy = "deny"
@@ -148,11 +152,18 @@ def main():
             try:
                 product.save()
             except Exception as e:
+                logging.warn("Error saving product, retrying after 1s")
+                logging.warn(e)
                 sleep(1)
                 product.save()
-            
+
             # Sleep to avoid rate limiting
             sleep(0.5)
 
+    logging.info("Finished")
+
+
 if __name__ == "__main__":
+    print("Running main function")
     main()
+    print("Finished main function")
