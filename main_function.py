@@ -73,7 +73,20 @@ def main():
 
     # Download and load Orbea stock
     orbea_stock = OrbeaStock(os.getenv("ORBEA_EMAIL"), os.getenv("ORBEA_PASSWORD"))
-    orbea_stock.login()
+
+    # Sometimes the login fails so we try again after 2s
+    try:
+        orbea_stock.login()
+    except:
+        logging.warn("First login attempt failed, trying again in 2s")
+        sleep(2)
+        try:
+            orbea_stock.login()
+            logging.info("Second login attempt successful")
+        except Exception as e:
+            logging.error("Second login attempt failed as well")
+            raise(e)
+
     stock_download = orbea_stock.download()
     df_orbea_stock = pd.read_csv(
         filepath_or_buffer=io.StringIO(stock_download.decode("utf-8")),
