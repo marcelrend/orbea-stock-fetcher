@@ -78,14 +78,14 @@ def main():
     try:
         orbea_stock.login()
     except:
-        logging.warn("First login attempt failed, trying again in 2s")
+        logging.warning("First login attempt failed, trying again in 2s")
         sleep(2)
         try:
             orbea_stock.login()
             logging.info("Second login attempt successful")
         except Exception as e:
             logging.error("Second login attempt failed as well")
-            raise(e)
+            raise (e)
 
     stock_download = orbea_stock.download()
     df_orbea_stock = pd.read_csv(
@@ -165,8 +165,8 @@ def main():
             try:
                 product.save()
             except Exception as e:
-                logging.warn("Error saving product, retrying after 1s")
-                logging.warn(e)
+                logging.warning("Error saving product, retrying after 1s")
+                logging.warning(e)
                 sleep(1)
                 product.save()
 

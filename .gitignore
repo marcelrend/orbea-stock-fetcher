@@ -1,6 +1,7 @@
 secrets.sh
 epos.xlsx
 code.zip
+.vscode
 
 # Default gitignore for Python projects:
 
