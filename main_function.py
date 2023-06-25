@@ -9,11 +9,15 @@ from orbea_stock import OrbeaStock
 
 
 def main():
+    # Default logger for imported modules
     logging.basicConfig(
         level=logging.WARN,
         format="%(asctime)s:%(levelname)s:%(message)s",
         datefmt="%Y-%m-%d %I:%M:%S%p",
     )
+    # Info logger for this module
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
     script_dir = os.path.dirname(os.path.realpath(__file__))
     shopify_api_version = "2022-10"
@@ -78,13 +82,13 @@ def main():
     try:
         orbea_stock.login()
     except:
-        logging.warning("First login attempt failed, trying again in 2s")
+        logger.warning("First login attempt failed, trying again in 2s")
         sleep(2)
         try:
             orbea_stock.login()
-            logging.info("Second login attempt successful")
+            logger.info("Second login attempt successful")
         except Exception as e:
-            logging.error("Second login attempt failed as well")
+            logger.error("Second login attempt failed as well")
             raise (e)
 
     stock_download = orbea_stock.download()
@@ -110,7 +114,7 @@ def main():
 
     unique_model_ids = df["Model ID"].unique()
 
-    logging.info(f"Running app, processing {len(unique_model_ids)} products")
+    logger.info(f"Running app, processing {len(unique_model_ids)} products")
 
     with shopify.Session.temp(
         os.getenv("SHOPIFY_SHOP_URL"),
@@ -127,11 +131,11 @@ def main():
 
             title = f"Orbea {first_record['Model']} {first_record['M']}"
 
-            logging.info(f"Product {i+1} of {len(unique_model_ids)} - {title}")
+            logger.info(f"Product {i+1} of {len(unique_model_ids)} - {title}")
 
             # Skip products without image - they are not for sale yet
             if not first_record["Image_Url"]:
-                logging.info(f"Skipping {title}. No image")
+                logger.info(f"Skipping {title}. No image")
                 continue
 
             find_product = shopify.Product.find(title=title)
@@ -143,7 +147,7 @@ def main():
                 else:
                     raise Exception(f"Multiple products found for {title}")
             else:
-                logging.info(f"Skipping {title}. Doesn't exist in Shopify")
+                logger.info(f"Skipping {title}. Doesn't exist in Shopify")
                 continue
 
             for variant in product.variants:
@@ -165,15 +169,15 @@ def main():
             try:
                 product.save()
             except Exception as e:
-                logging.warning("Error saving product, retrying after 1s")
-                logging.warning(e)
+                logger.warning("Error saving product, retrying after 1s")
+                logger.warning(e)
                 sleep(1)
                 product.save()
 
             # Sleep to avoid rate limiting
             sleep(0.5)
 
-    logging.info("Finished")
+    logger.info("Finished")
 
 
 if __name__ == "__main__":
