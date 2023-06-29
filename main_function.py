@@ -100,7 +100,7 @@ def main():
     df_orbea_stock.drop(
         columns=["Description", "Color", "Wheel Size"], axis=1, inplace=True
     )
-    df_orbea_stock.rename(columns={"Item": "TTCC"}, inplace=True)
+    df_orbea_stock.rename(columns={"Article": "TTCC"}, inplace=True)
     df_orbea_stock.rename(columns={"Color Code": "Colour Code"}, inplace=True)
 
     # Extend epos with df_orbea_stock
