@@ -16,11 +16,12 @@ class OrbeaStock:
             "from": "",
             "login": "",
         }
+        self.session.get(login_url)
         orbea_login_response = self.session.post(
             login_url,
             data=login_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            allow_redirects=True,
+            allow_redirects=False,
         )
         orbea_login_response.raise_for_status()
 
@@ -30,9 +31,9 @@ class OrbeaStock:
             download_url, headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
 
-        if download_response.status_code != 200:
+        if download_response.status_code != 302:
             raise Exception(
-                f"Error: csv download returned status code [{download_response.status_code}], expected 200"
+                f"Error: csv download returned status code [{download_response.status_code}], expected 302"
             )
 
         return download_response.content
