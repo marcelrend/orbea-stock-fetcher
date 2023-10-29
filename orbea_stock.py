@@ -31,9 +31,9 @@ class OrbeaStock:
             download_url, headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
 
-        if download_response.status_code != 302:
+        if download_response.status_code != 200:
             raise Exception(
-                f"Error: csv download returned status code [{download_response.status_code}], expected 302"
+                f"Error: csv download returned status code [{download_response.status_code}], expected 200"
             )
 
         return download_response.content

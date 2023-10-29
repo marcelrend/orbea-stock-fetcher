@@ -24,29 +24,31 @@ def main():
 
     # TODO: load from cloud_event
     # Products to load
-    families = [
-        "Alma",
-        "Occam",
-        "Oiz",
-        "Laufey",
-        "Rallon",
-        "Rise",
-        "Wild",
-        "Urrun",
-        "Avant",
-        "Orca",
-        "Orca Aero",
-        "Ordu",
-        "Terra",
-        "Kemen",
-    ]
+    # families = [
+    #     "Alma",
+    #     "Occam",
+    #     "Oiz",
+    #     "Laufey",
+    #     "Rallon",
+    #     "Rise",
+    #     "Wild",
+    #     "Urrun",
+    #     "Avant",
+    #     "Orca",
+    #     "Orca Aero",
+    #     "Ordu",
+    #     "Terra",
+    #     "Kemen",
+    # ]
 
     # Optional: only load a single model
     filter_model = ""
 
     # Exclude models, e.g if they are double
     exclude_models = [
-        "ORDU M30iLTD",
+        {"model": "ORDU M30iLTD", "year": "2023"},
+        {"model": "WILD M-TEAM", "year": "2024"},
+        {"model": "WILD M-LTD", "year": "2024"},
     ]
 
     # Check if all required environments variables are set
@@ -64,16 +66,23 @@ def main():
     # Load Epos
     epos_file = f"{script_dir}/epos.xlsx"
     df = pd.read_excel(io=epos_file, index_col=0, dtype=str)
-    df = df[df["Family"].isin(families)]
+
+    # Disabled families filter - rows will be manually removed in the Excel
+    # df = df[df["Family"].isin(families)]
 
     # Optional: only load a single model
     if filter_model:
         df = df[df["Model"] == filter_model]
 
-    # Optional: exclude models
+    # if exclude_models is defined, remove those models if the model and year match
     if exclude_models:
         for exclude_model in exclude_models:
-            df = df[df["Model"] != exclude_model]
+            df = df[
+                ~(
+                    (df["Model"] == exclude_model["model"])
+                    & (df["Year"] == exclude_model["year"])
+                )
+            ]
 
     # Download and load Orbea stock
     orbea_stock = OrbeaStock(os.getenv("ORBEA_EMAIL"), os.getenv("ORBEA_PASSWORD"))
@@ -124,19 +133,12 @@ def main():
         for i, unique_model_id in enumerate(unique_model_ids):
             df_variants = df[df["Model ID"] == unique_model_id]
 
-            # Get attributes from 1st record, but skip color Myo because it never has an image
-            first_record = df_variants[df_variants["Orbea Colour (EN)"] != "Myo"].iloc[
-                0
-            ]
+            # Get attributes from 1st record
+            first_record = df_variants.iloc[0]
 
-            title = f"Orbea {first_record['Model']} {first_record['M']}"
+            title = f"Orbea {first_record['Model']} {first_record['Year']}"
 
             logger.info(f"Product {i+1} of {len(unique_model_ids)} - {title}")
-
-            # Skip products without image - they are not for sale yet
-            if not first_record["Image_Url"]:
-                logger.info(f"Skipping {title}. No image")
-                continue
 
             find_product = shopify.Product.find(title=title)
 
