@@ -150,6 +150,8 @@ def main():
                     raise Exception(f"Multiple products found for {title}")
             else:
                 logger.info(f"Skipping {title}. Doesn't exist in Shopify")
+                # Sleep to avoid rate limiting
+                sleep(0.5)
                 continue
 
             for variant in product.variants:
@@ -183,6 +185,4 @@ def main():
 
 
 if __name__ == "__main__":
-    print("Running main function")
     main()
-    print("Finished main function")
