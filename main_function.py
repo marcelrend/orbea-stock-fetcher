@@ -1,4 +1,5 @@
 import logging
+import sys
 import os
 import numpy as np
 import io
@@ -125,6 +126,7 @@ def main():
 
     logger.info(f"Running app, processing {len(unique_model_ids)} products")
 
+    errors = 0
     with shopify.Session.temp(
         os.getenv("SHOPIFY_SHOP_URL"),
         shopify_api_version,
@@ -155,13 +157,23 @@ def main():
                 continue
 
             for variant in product.variants:
-                df_variant = df_variants[
-                    (df_variants["Size"] == variant.attributes["option1"])
-                    & (
-                        df_variants["Summarised Colour (EN)"]
-                        == variant.attributes["option2"]
-                    )
-                ].iloc[0]
+                try:
+                    df_variant = df_variants[
+                        (df_variants["Size"] == variant.attributes["option1"])
+                        & (
+                            df_variants["Summarised Colour (EN)"]
+                            == variant.attributes["option2"]
+                        )
+                    ].iloc[0]
+                except:
+                    errors += 1
+                    logger.error(f"Mismatching color for {title}")
+                    logger.error(f"Shopify color: {variant.option2}")
+
+                    df_stock_colors = df_variants["Summarised Colour (EN)"].unique()
+                    stock_colors_str = ', '.join(map(str, df_stock_colors))
+                    logger.error(f"Stock colors: {stock_colors_str}")
+
 
                 if df_variant["Units available"] > 0:
                     inventory_policy = "continue"
@@ -181,7 +193,11 @@ def main():
             # Sleep to avoid rate limiting
             sleep(0.5)
 
-    logger.info("Finished")
+    if errors > 0:
+        logger.error(f"{errors} errors occurred. Please check log above")
+        sys.exit(1)
+    else:
+        logger.info("Finished successfully")
 
 
 if __name__ == "__main__":
