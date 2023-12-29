@@ -23,33 +23,33 @@ def main():
     script_dir = os.path.dirname(os.path.realpath(__file__))
     shopify_api_version = "2022-10"
 
-    # TODO: load from cloud_event
-    # Products to load
-    # families = [
-    #     "Alma",
-    #     "Occam",
-    #     "Oiz",
-    #     "Laufey",
-    #     "Rallon",
-    #     "Rise",
-    #     "Wild",
-    #     "Urrun",
-    #     "Avant",
-    #     "Orca",
-    #     "Orca Aero",
-    #     "Ordu",
-    #     "Terra",
-    #     "Kemen",
-    # ]
+    families = [
+        "Alma",
+        "Avant",
+        "Kemen",
+        "Laufey",
+        "Occam LT",
+        "Occam SL",
+        "Oiz",
+        "Orca",
+        "Orca Aero",
+        "Ordu",
+        "Rallon",
+        "Rise",
+        "Terra",
+        "Urrun",
+        "Wild",
+    ]
 
     # Optional: only load a single model
     filter_model = ""
 
     # Exclude models, e.g if they are double
-    exclude_models = [
+    skip_models = [
         {"model": "ORDU M30iLTD", "year": "2023"},
         {"model": "WILD M-TEAM", "year": "2024"},
         {"model": "WILD M-LTD", "year": "2024"},
+        {"model": "TERRA M20iTEAM", "year": "2024"},
     ]
 
     # Check if all required environments variables are set
@@ -68,22 +68,28 @@ def main():
     epos_file = f"{script_dir}/epos.xlsx"
     df = pd.read_excel(io=epos_file, index_col=0, dtype=str)
 
-    # Disabled families filter - rows will be manually removed in the Excel
-    # df = df[df["Family"].isin(families)]
+    df = df[df["Family"].isin(families)]
 
     # Optional: only load a single model
     if filter_model:
         df = df[df["Model"] == filter_model]
 
-    # if exclude_models is defined, remove those models if the model and year match
-    if exclude_models:
-        for exclude_model in exclude_models:
+    # if skip_models is defined, remove those models if the model and year match
+    if skip_models:
+        for skip_model in skip_models:
             df = df[
                 ~(
-                    (df["Model"] == exclude_model["model"])
-                    & (df["Year"] == exclude_model["year"])
+                    (df["Model"] == skip_model["model"])
+                    & (df["Year"] == skip_model["year"])
                 )
             ]
+
+    # Remove >mph and OMRs (frame)
+    for v in ['20mph', '28mph', ' OMR', ' OMX', 'SPIRIT', '2POS FK']:
+        df = df[~df['Model'].str.contains(v)]
+
+    # Convert double whitespace to single whitespace
+    df["Summarised Colour (EN)"] = df["Summarised Colour (EN)"].str.replace(r'\s+', ' ')
 
     # Download and load Orbea stock
     orbea_stock = OrbeaStock(os.getenv("ORBEA_EMAIL"), os.getenv("ORBEA_PASSWORD"))
