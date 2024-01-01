@@ -27,6 +27,7 @@ def main():
         "Alma",
         "Avant",
         "Kemen",
+        "Kemen Suv"
         "Laufey",
         "Occam LT",
         "Occam SL",
