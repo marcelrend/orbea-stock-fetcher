@@ -29,6 +29,7 @@ def main():
         "Kemen",
         "Kemen Suv"
         "Laufey",
+        "Occam",
         "Occam LT",
         "Occam SL",
         "Oiz",
@@ -43,7 +44,7 @@ def main():
     ]
 
     # Optional: only load a single model
-    filter_model = ""
+    filter_model = "OCCAM H20 LT"
 
     # Exclude models, e.g if they are double
     skip_models = [
