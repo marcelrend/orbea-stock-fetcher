@@ -44,7 +44,7 @@ def main():
     ]
 
     # Optional: only load a single model
-    filter_model = "OCCAM H20 LT"
+    filter_model = ""
 
     # Exclude models, e.g if they are double
     skip_models = [
