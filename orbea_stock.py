@@ -7,6 +7,9 @@ class OrbeaStock:
         self.email = email
         self.password = password
         self.session = requests.Session()
+        self.session.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        }
 
     def login(self):
         login_url = "https://www.orbea.com/nl-en/kide/login/"
@@ -21,7 +24,7 @@ class OrbeaStock:
             login_url,
             data=login_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            allow_redirects=False,
+            allow_redirects=True,
         )
         orbea_login_response.raise_for_status()
 
