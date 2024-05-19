@@ -1,4 +1,5 @@
 import requests
+from time import sleep
 
 
 # Create class to download Orbea stock
@@ -23,7 +24,7 @@ class OrbeaStock:
             "Upgrade-Insecure-Requests": "1",
         }
 
-    def login(self):
+    def _login(self):
         login_url = "https://www.orbea.com/nl-en/kide/login/"
         login_data = {
             "login_email": self.email,
@@ -31,24 +32,38 @@ class OrbeaStock:
             "from": "",
             "login": "",
         }
-        test = self.session.get(login_url)
-        orbea_login_response = self.session.post(
+
+        self.session.get(login_url) # Prepare session
+
+        return self.session.post(
             login_url,
             data=login_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             allow_redirects=True,
         )
-        orbea_login_response.raise_for_status()
 
     def download(self):
         download_url = "https://www.orbea.com/nl-en/kide/available/csv/"
-        download_response = self.session.get(
-            download_url, headers={"Content-Type": "application/x-www-form-urlencoded"}
-        )
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-        if download_response.status_code != 200:
-            raise Exception(
-                f"Error: csv download returned status code [{download_response.status_code}], expected 200"
-            )
+        max_retries = 1000
+        sleep_duration = 0.1
+
+        # Retry to handle flakiness in the login and download response
+        for attempt in range(1, max_retries + 1):
+            try:
+                login_response = self._login()
+                login_response.raise_for_status()
+                print("Login successful. Downloading CSV")
+                download_response = self.session.get(download_url, headers=headers)
+                download_response.raise_for_status()
+                break
+            except requests.exceptions.RequestException as e:
+                print(f"Attempt {attempt} failed: {e}")
+                if attempt == max_retries:
+                    print("Max retries reached. Login/download failed.")
+                    raise # Re-raise the last exception
+                else:
+                    sleep(sleep_duration)
 
         return download_response.content
