@@ -12,3 +12,8 @@ class FtpSecrets:
 class ShopifySecrets:
     api_secret: str
     shop_url: str
+
+
+@dataclasses.dataclass
+class NotificationSecrets:
+    api_secret: str

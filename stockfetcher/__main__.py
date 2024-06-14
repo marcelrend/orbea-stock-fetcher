@@ -6,7 +6,8 @@ import pandas as pd
 import numpy as np
 import shopify
 from stockfetcher.orbea_stock import OrbeaStock
-from app_secrets import ftp_secrets, shopify_secret
+from app_secrets import ftp_secrets, shopify_secret, notification_secret
+from stockfetcher.notification import Notification
 
 
 def main():
@@ -176,4 +177,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        Notification.send(secret=notification_secret)
+        raise
