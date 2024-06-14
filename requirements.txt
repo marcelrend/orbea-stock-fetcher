@@ -1,6 +1,5 @@
 ShopifyAPI
 pandas
 openpyxl
-requests
-functions-framework==3.*
-google-cloud-logging
+pytest
+black

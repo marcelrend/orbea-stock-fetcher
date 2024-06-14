@@ -1,12 +1,12 @@
 import logging
 import sys
 import os
-import numpy as np
-import io
 from time import sleep
 import pandas as pd
+import numpy as np
 import shopify
-from orbea_stock import OrbeaStock
+from stockfetcher.orbea_stock import OrbeaStock
+from app_secrets import ftp_secrets, shopify_secret
 
 
 def main():
@@ -20,15 +20,15 @@ def main():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    script_dir = os.path.dirname(os.path.realpath(__file__))
     shopify_api_version = "2022-10"
+
+    dry_run = False
 
     families = [
         "Alma",
         "Avant",
         "Kemen",
-        "Kemen Suv"
-        "Laufey",
+        "Kemen Suv" "Laufey",
         "Occam",
         "Occam LT",
         "Occam SL",
@@ -54,20 +54,8 @@ def main():
         {"model": "TERRA M20iTEAM", "year": "2024"},
     ]
 
-    # Check if all required environments variables are set
-    required_envs = [
-        "ORBEA_EMAIL",
-        "ORBEA_PASSWORD",
-        "SHOPIFY_API_SECRET",
-        "SHOPIFY_SHOP_URL",
-    ]
-
-    for required_env in required_envs:
-        if required_env not in os.environ:
-            raise Exception(f"Environment variable {required_env} is not set")
-
     # Load Epos
-    epos_file = f"{script_dir}/epos.xlsx"
+    epos_file = "epos_small_v2_23_24.xlsx"
     df = pd.read_excel(io=epos_file, index_col=0, dtype=str)
 
     df = df[df["Family"].isin(families)]
@@ -87,47 +75,32 @@ def main():
             ]
 
     # Remove >mph and OMRs (frame)
-    for v in ['20mph', '28mph', ' OMR', ' OMX', 'SPIRIT', '2POS FK']:
-        df = df[~df['Model'].str.contains(v)]
+    for v in ["20mph", "28mph", " OMR", " OMX", "SPIRIT", "2POS FK"]:
+        df = df[~df["Model"].str.contains(v)]
 
     # Convert double whitespace to single whitespace
-    df["Summarised Colour (EN)"] = df["Summarised Colour (EN)"].str.replace(r'\s+', ' ')
+    df["Summarised Colour (EN)"] = df["Summarised Colour (EN)"].str.replace(r"\s+", " ")
 
     # Download and load Orbea stock
-    orbea_stock = OrbeaStock(os.getenv("ORBEA_EMAIL"), os.getenv("ORBEA_PASSWORD"))
-    stock_download = orbea_stock.download()
-    df_orbea_stock = pd.read_csv(
-        filepath_or_buffer=io.StringIO(stock_download.decode("utf-8")),
-        dtype=str,
-        sep=";",
-    )
-    df_orbea_stock.drop(
-        columns=["Description", "Color", "Wheel Size"], axis=1, inplace=True
-    )
-    df_orbea_stock.rename(columns={"Article": "TTCC"}, inplace=True)
-    df_orbea_stock.rename(columns={"Color Code": "Colour Code"}, inplace=True)
+    df_orbea_stock = OrbeaStock.download(secrets=ftp_secrets)
 
     # Extend epos with df_orbea_stock
-    df = df.merge(df_orbea_stock, how="left", on=["TTCC", "Size", "Colour Code"])
-    df.replace(np.nan, "", inplace=True)
+    df = df.merge(df_orbea_stock, how="left", on=["EAN"])
 
-    # Create int from Units available
-    df["Units available"] = df["Units available"].str.replace("+", "")
-    df["Units available"] = df["Units available"].replace("", "0")
-    df["Units available"] = df["Units available"].astype(int)
+    df["Available"].replace(np.nan, 0, inplace=True)
 
-    unique_model_ids = df["Model ID"].unique()
+    unique_model_ids = df["Model"].unique()
 
     logger.info(f"Running app, processing {len(unique_model_ids)} products")
 
     errors = 0
     with shopify.Session.temp(
-        os.getenv("SHOPIFY_SHOP_URL"),
+        shopify_secret.shop_url,
         shopify_api_version,
-        os.getenv("SHOPIFY_API_SECRET"),
+        shopify_secret.api_secret,
     ):
         for i, unique_model_id in enumerate(unique_model_ids):
-            df_variants = df[df["Model ID"] == unique_model_id]
+            df_variants = df[df["Model"] == unique_model_id]
 
             # Get attributes from 1st record
             first_record = df_variants.iloc[0]
@@ -165,11 +138,10 @@ def main():
                     logger.error(f"Shopify color: {variant.option2}")
 
                     df_stock_colors = df_variants["Summarised Colour (EN)"].unique()
-                    stock_colors_str = ', '.join(map(str, df_stock_colors))
+                    stock_colors_str = ", ".join(map(str, df_stock_colors))
                     logger.error(f"Stock colors: {stock_colors_str}")
 
-
-                if df_variant["Units available"] > 0:
+                if df_variant["Available"] > 0:
                     inventory_policy = "continue"
                 else:
                     inventory_policy = "deny"
@@ -177,15 +149,24 @@ def main():
                 variant.attributes["inventory_policy"] = inventory_policy
 
             try:
-                product.save()
+                if dry_run:
+                    logger.info("Dry run: would've saved product")
+                else:
+                    product.save()
             except Exception as e:
                 logger.warning("Error saving product, retrying after 1s")
                 logger.warning(e)
-                sleep(1)
-                product.save()
+                sleep(0.5)
+                if dry_run:
+                    logger.info("Dry run: would've saved product")
+                else:
+                    product.save()
 
             # Sleep to avoid rate limiting
-            sleep(0.5)
+            if dry_run:
+                logger.info("Dry run: would've slept")
+            else:
+                sleep(0.5)
 
     if errors > 0:
         logger.error(f"{errors} errors occurred. Please check log above")
