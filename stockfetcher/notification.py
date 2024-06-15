@@ -4,7 +4,7 @@ from stockfetcher.secrets_dataclasses import NotificationSecrets
 
 class Notification:
     @staticmethod
-    def send(secret: NotificationSecrets):
+    def send(secret: NotificationSecrets, status):
         url = "https://api.pushbullet.com/v2/pushes"
 
         # Headers for the request
@@ -16,7 +16,7 @@ class Notification:
         # Data for the push
         data = {
             "type": "note",
-            "title": "Stock updater error",
+            "title": f"Stock updater {status}",
             "body": "To do",
         }
 
